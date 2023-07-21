@@ -31,16 +31,21 @@ class App : Application() {
         val fileName = Label("")
         val fileSelectBtn = Button("Select CSV File")
         val loadBtn = Button("Load")
-        val mainScene = Scene(rootVBox).apply { fill = null }
+
+        val operationHBox = HBox().apply {
+            spacing = 10.0
+        }
+        val numSortBtn = Button("Sorted by Num")
+        var isNumSortUp = false
         val scrollPane = ScrollPane()
         val materialElementViewVBox = VBox().apply {
             padding = Insets(10.0)
             spacing = 10.0
         }
-
         var materialFile = File(".")
+        var materialElementList = listOf<MaterialElement>()
         val materialTitle = HBox().apply {
-            padding = Insets(0.0,10.0,0.0,10.0)
+            padding = Insets(0.0, 10.0, 0.0, 10.0)
             spacing = 10.0
             children.addAll(
                 Label("Delete").apply {
@@ -70,8 +75,11 @@ class App : Application() {
             )
         }
 
-        rootVBox.children.addAll(loadHBox, scrollPane)
+        val mainScene = Scene(rootVBox).apply { fill = null }
+
+        rootVBox.children.addAll(loadHBox, operationHBox, scrollPane)
         loadHBox.children.addAll(fileName, fileSelectBtn, loadBtn)
+        operationHBox.children.addAll(numSortBtn)
         scrollPane.content = materialElementViewVBox
         materialElementViewVBox.children.add(materialTitle)
         fileSelectBtn.setOnAction {
@@ -91,16 +99,35 @@ class App : Application() {
                 materialElementViewVBox.children.add(materialTitle)
             }
             // 加载csv数据文件
-            val txt =  materialFile.readLines(Charset.forName("GBK"))
-            val content =  txt.map{ it.replace("\"","") }
+            val txt = materialFile.readLines(Charset.forName("GBK"))
+            val content = txt.map { it.replace("\"", "") }
             val headers = content[0].split(",")
-            if (headers[0]=="Item"&&content[1]=="Total") return@setOnAction
-            val data = content.subList(1, content.size).map {
-                val elements  = it.split(",")
+            // 简要判断文件合法性
+            if (headers[0] == "Item" && content[1] == "Total") return@setOnAction
+            // 读取数据并实例化
+            materialElementList = content.subList(1, content.size).map {
+                val elements = it.split(",")
                 MaterialElement(elements[0], elements[1].toInt())
             }
-            materialElementViewVBox.children.addAll(data.map { it.listViewElement })
+            // 展示数据
+            materialElementViewVBox.children.addAll(materialElementList.map { it.listViewElement })
         }
+        numSortBtn.setOnAction {
+            // 清空之前的展示数据
+            if (materialElementViewVBox.children.size > 1) {
+                materialElementViewVBox.children.clear()
+                materialElementViewVBox.children.add(materialTitle)
+            }
+            // 默认升序
+            materialElementList = materialElementList.sortedBy { it.count }
+            // 若之前升序 则反转成降序
+            if (isNumSortUp) materialElementList = materialElementList.reversed()
+            // 反转升序指示
+            isNumSortUp = !isNumSortUp
+            // 展示数据
+            materialElementViewVBox.children.addAll(materialElementList.map { it.listViewElement })
+        }
+
         primaryStage.apply {
             scene = mainScene
             title = "$name $version"
